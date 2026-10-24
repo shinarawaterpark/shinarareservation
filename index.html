@@ -6,11 +6,11 @@
 <meta name="theme-color" content="#087fc4">
 <link rel="icon" type="image/png" href="icon-dolphin.png">
 <title>Shinara Waterpark — Reservation</title>
-<script src="html2pdf.bundle.min.js"></script>
+<script src="jspdf.umd.min.js"></script>
 <script>
-if (!window.html2pdf) {
+if (!window.jspdf) {
   const s = document.createElement('script');
-  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
   document.head.appendChild(s);
 }
 </script>
@@ -51,26 +51,6 @@ button:active{transform:translateY(1px)}
 @media(max-width:420px){.logo{width:50px;height:50px}}
 /* Printable & Exportable A5 reservation sheet */
 #print-sheet{display:none}
-body.exporting-pdf{background:#ffffff!important;overflow:visible!important}
-body.exporting-pdf .topbar,
-body.exporting-pdf .wrap,
-body.exporting-pdf .footer{display:none!important}
-body.exporting-pdf #print-sheet{
-  display:flex!important;
-  flex-direction:column!important;
-  box-sizing:border-box!important;
-  width:148mm!important;
-  height:209mm!important;
-  max-height:209mm!important;
-  padding:8mm!important;
-  margin:0 auto!important;
-  background:#ffffff!important;
-  font-family:Arial,sans-serif!important;
-  color:#17345c!important;
-  font-size:11pt!important;
-  line-height:1.3!important;
-  overflow:hidden!important;
-}
 .print-head{background:#087fc4;color:white;text-align:center;padding:12px 10px 10px;border-radius:8px 8px 0 0;flex-shrink:0}
 .print-head .brand{font-size:20pt;font-weight:900;letter-spacing:.4px;line-height:1.15}
 .print-head .sub{font-size:8pt;letter-spacing:2px;margin-top:2px;font-weight:700}
@@ -170,6 +150,137 @@ function syncPrintSheet() {
   out('arrival', data.get('arrival') || '');
 
 }
+function generateVectorPDF(data, filename) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({
+    unit: 'mm',
+    format: 'a5',
+    orientation: 'portrait'
+  });
+
+  const pw = 148;
+  const ph = 210;
+  const m = 8;
+  const w = pw - (m * 2); // 132mm
+
+  // 1. Header Banner
+  doc.setFillColor(8, 127, 196); // #087fc4
+  doc.roundedRect(m, m, w, 17, 2, 2, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(19);
+  doc.text('SHINARA WATERPARK', pw / 2, m + 9, { align: 'center' });
+  
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('I N D R A M A Y U', pw / 2, m + 14, { align: 'center' });
+
+  // 2. Title Banner
+  let y = m + 17;
+  doc.setFillColor(255, 216, 61); // #ffd83d
+  doc.rect(m, y, w, 9, 'F');
+  
+  doc.setTextColor(7, 59, 120); // #073b78
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('FORM RESERVATION ROMBONGAN', pw / 2, y + 6.3, { align: 'center' });
+
+  // 3. Section 1: DATA RESERVASI
+  y += 12;
+  doc.setFillColor(232, 248, 255); // #e8f8ff
+  doc.rect(m, y, w, 6.5, 'F');
+  doc.setFillColor(8, 127, 196); // blue left accent bar
+  doc.rect(m, y, 1.5, 6.5, 'F');
+  
+  doc.setTextColor(8, 127, 196);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('DATA RESERVASI', m + 4, y + 4.7);
+
+  // Rows
+  const rows = [
+    { label: 'Tanggal Kunjungan', val: data.visitDate || '-' },
+    { label: 'Nama Rombongan', val: data.origin || '-' },
+    { label: 'Jumlah Peserta', val: (data.people ? data.people + ' orang' : '-') },
+    { label: 'Nama PIC / Ketua', val: data.pic || '-' },
+    { label: 'No. HP / WhatsApp', val: data.phone || '-' },
+    { label: 'Tempat Berkumpul', val: data.meeting || '-' },
+    { label: 'Jam Kedatangan', val: (data.arrival ? data.arrival + ' WIB' : '-') }
+  ];
+
+  y += 6.5;
+  const rowHeight = 7.2;
+  const colLabelX = m + 3;
+  const colColonX = m + 48;
+  const colValX = m + 53;
+
+  doc.setFontSize(9.5);
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const rowY = y + (i * rowHeight);
+    
+    // Label
+    doc.setTextColor(23, 52, 92); // #17345c
+    doc.setFont('helvetica', 'bold');
+    doc.text(r.label, colLabelX, rowY + 5);
+
+    // Colon
+    doc.text(':', colColonX, rowY + 5);
+
+    // Value
+    doc.setTextColor(16, 36, 62);
+    doc.setFont('helvetica', 'normal');
+    doc.text(String(r.val), colValX, rowY + 5);
+
+    // Dotted bottom line
+    doc.setDrawColor(167, 191, 206);
+    doc.setLineDashPattern([0.6, 0.8], 0);
+    doc.line(m + 1, rowY + rowHeight, m + w - 1, rowY + rowHeight);
+  }
+
+  // 4. Section 2: INFORMASI TAMBAHAN
+  y += (rows.length * rowHeight) + 3;
+  doc.setLineDashPattern([], 0); // reset line dash
+  doc.setFillColor(232, 248, 255); // #e8f8ff
+  doc.rect(m, y, w, 6.5, 'F');
+  doc.setFillColor(8, 127, 196);
+  doc.rect(m, y, 1.5, 6.5, 'F');
+  
+  doc.setTextColor(8, 127, 196);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('INFORMASI TAMBAHAN', m + 4, y + 4.7);
+
+  y += 7.5;
+  doc.setTextColor(23, 52, 92);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.text('Kebutuhan Khusus / Catatan:', m + 3, y + 4);
+
+  y += 6;
+  const boxHeight = 44;
+  doc.setDrawColor(167, 191, 206);
+  doc.setLineDashPattern([0.6, 0.8], 0);
+  doc.roundedRect(m, y, w, boxHeight, 1.5, 1.5, 'S');
+
+  if (data.extra) {
+    doc.setTextColor(16, 36, 62);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    const splitNotes = doc.splitTextToSize(data.extra, w - 6);
+    doc.text(splitNotes, m + 3, y + 5);
+  }
+
+  // 5. Footer
+  doc.setTextColor(108, 130, 148); // #6c8294
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text('SHINARA WATERPARK - INDRAMAYU', pw / 2, ph - 9, { align: 'center' });
+
+  doc.save(filename);
+}
+
 async function downloadPDF() {
   if (!form.reportValidity()) return;
   syncPrintSheet();
@@ -177,49 +288,35 @@ async function downloadPDF() {
   const downloadBtn = document.getElementById('downloadPdfBtn');
   const originalBtnText = downloadBtn.innerHTML;
   downloadBtn.disabled = true;
-  downloadBtn.innerHTML = '⏳ Menyiapkan PDF...';
-
-  const sheet = document.getElementById('print-sheet');
+  downloadBtn.innerHTML = '⏳ Mengunduh PDF...';
 
   const originInput = document.getElementById('origin').value.trim() || 'Rombongan';
   const safeOrigin = originInput.replace(/[^a-zA-Z0-9_\-]/g, '_');
   const visitDateInput = document.getElementById('visitDate').value || '';
   const filename = `Reservation_Shinara_${safeOrigin}${visitDateInput ? '_' + visitDateInput : ''}.pdf`;
 
-  // Make print-sheet visible in normal DOM flow for html2canvas
-  document.body.classList.add('exporting-pdf');
-
-  const opt = {
-    margin: 0,
-    filename: filename,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      scrollY: 0,
-      scrollX: 0,
-      backgroundColor: '#ffffff'
-    },
-    jsPDF: {
-      unit: 'mm',
-      format: 'a5',
-      orientation: 'portrait'
-    },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+  const formData = new FormData(form);
+  const data = {
+    visitDate: formatDate(formData.get('visitDate')),
+    origin: formData.get('origin'),
+    people: formData.get('people'),
+    pic: formData.get('pic'),
+    phone: formData.get('phone'),
+    meeting: formData.get('meeting'),
+    arrival: formData.get('arrival'),
+    extra: formData.get('extra')
   };
 
   try {
-    if (window.html2pdf) {
-      await html2pdf().set(opt).from(sheet).save();
+    if (window.jspdf && window.jspdf.jsPDF) {
+      generateVectorPDF(data, filename);
     } else {
       window.print();
     }
   } catch (err) {
-    console.error('Error generating PDF:', err);
+    console.error('Error generating vector PDF:', err);
     window.print();
   } finally {
-    document.body.classList.remove('exporting-pdf');
     downloadBtn.disabled = false;
     downloadBtn.innerHTML = originalBtnText;
   }
