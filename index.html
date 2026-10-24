@@ -51,6 +51,26 @@ button:active{transform:translateY(1px)}
 @media(max-width:420px){.logo{width:50px;height:50px}}
 /* Printable & Exportable A5 reservation sheet */
 #print-sheet{display:none}
+body.exporting-pdf{background:#ffffff!important;overflow:visible!important}
+body.exporting-pdf .topbar,
+body.exporting-pdf .wrap,
+body.exporting-pdf .footer{display:none!important}
+body.exporting-pdf #print-sheet{
+  display:flex!important;
+  flex-direction:column!important;
+  box-sizing:border-box!important;
+  width:148mm!important;
+  height:209mm!important;
+  max-height:209mm!important;
+  padding:8mm!important;
+  margin:0 auto!important;
+  background:#ffffff!important;
+  font-family:Arial,sans-serif!important;
+  color:#17345c!important;
+  font-size:11pt!important;
+  line-height:1.3!important;
+  overflow:hidden!important;
+}
 .print-head{background:#087fc4;color:white;text-align:center;padding:12px 10px 10px;border-radius:8px 8px 0 0;flex-shrink:0}
 .print-head .brand{font-size:20pt;font-weight:900;letter-spacing:.4px;line-height:1.15}
 .print-head .sub{font-size:8pt;letter-spacing:2px;margin-top:2px;font-weight:700}
@@ -161,47 +181,13 @@ async function downloadPDF() {
 
   const sheet = document.getElementById('print-sheet');
 
-  // Container on top to ensure html2canvas captures full styles without occlusion
-  const overlay = document.createElement('div');
-  overlay.id = 'pdf-export-container';
-  overlay.style.position = 'fixed';
-  overlay.style.left = '0';
-  overlay.style.top = '0';
-  overlay.style.width = '148mm';
-  overlay.style.height = '210mm';
-  overlay.style.maxHeight = '210mm';
-  overlay.style.boxSizing = 'border-box';
-  overlay.style.padding = '8mm';
-  overlay.style.backgroundColor = '#ffffff';
-  overlay.style.zIndex = '999999';
-  overlay.style.display = 'flex';
-  overlay.style.flexDirection = 'column';
-  overlay.style.overflow = 'hidden';
-  overlay.style.fontFamily = 'Arial, sans-serif';
-  overlay.style.color = '#17345c';
-  overlay.style.fontSize = '11pt';
-  overlay.style.lineHeight = '1.3';
-
-  const clone = sheet.cloneNode(true);
-  clone.id = 'print-sheet-active';
-  clone.style.display = 'flex';
-  clone.style.flexDirection = 'column';
-  clone.style.width = '100%';
-  clone.style.height = '100%';
-  clone.style.maxHeight = '100%';
-  clone.style.boxSizing = 'border-box';
-  clone.style.fontFamily = 'Arial, sans-serif';
-  clone.style.color = '#17345c';
-  clone.style.fontSize = '11pt';
-  clone.style.lineHeight = '1.3';
-
-  overlay.appendChild(clone);
-  document.body.appendChild(overlay);
-
   const originInput = document.getElementById('origin').value.trim() || 'Rombongan';
   const safeOrigin = originInput.replace(/[^a-zA-Z0-9_\-]/g, '_');
   const visitDateInput = document.getElementById('visitDate').value || '';
   const filename = `Reservation_Shinara_${safeOrigin}${visitDateInput ? '_' + visitDateInput : ''}.pdf`;
+
+  // Make print-sheet visible in normal DOM flow for html2canvas
+  document.body.classList.add('exporting-pdf');
 
   const opt = {
     margin: 0,
@@ -211,20 +197,21 @@ async function downloadPDF() {
       scale: 2,
       useCORS: true,
       logging: false,
-      scrollX: 0,
       scrollY: 0,
+      scrollX: 0,
       backgroundColor: '#ffffff'
     },
     jsPDF: {
       unit: 'mm',
       format: 'a5',
       orientation: 'portrait'
-    }
+    },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   };
 
   try {
     if (window.html2pdf) {
-      await html2pdf().set(opt).from(overlay).save();
+      await html2pdf().set(opt).from(sheet).save();
     } else {
       window.print();
     }
@@ -232,7 +219,7 @@ async function downloadPDF() {
     console.error('Error generating PDF:', err);
     window.print();
   } finally {
-    overlay.remove();
+    document.body.classList.remove('exporting-pdf');
     downloadBtn.disabled = false;
     downloadBtn.innerHTML = originalBtnText;
   }
