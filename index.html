@@ -160,22 +160,43 @@ async function downloadPDF() {
   downloadBtn.innerHTML = '⏳ Menyiapkan PDF...';
 
   const sheet = document.getElementById('print-sheet');
+
+  // Container on top to ensure html2canvas captures full styles without occlusion
+  const overlay = document.createElement('div');
+  overlay.id = 'pdf-export-container';
+  overlay.style.position = 'fixed';
+  overlay.style.left = '0';
+  overlay.style.top = '0';
+  overlay.style.width = '148mm';
+  overlay.style.height = '210mm';
+  overlay.style.maxHeight = '210mm';
+  overlay.style.boxSizing = 'border-box';
+  overlay.style.padding = '8mm';
+  overlay.style.backgroundColor = '#ffffff';
+  overlay.style.zIndex = '999999';
+  overlay.style.display = 'flex';
+  overlay.style.flexDirection = 'column';
+  overlay.style.overflow = 'hidden';
+  overlay.style.fontFamily = 'Arial, sans-serif';
+  overlay.style.color = '#17345c';
+  overlay.style.fontSize = '11pt';
+  overlay.style.lineHeight = '1.3';
+
   const clone = sheet.cloneNode(true);
-  clone.id = 'print-sheet-export';
+  clone.id = 'print-sheet-active';
   clone.style.display = 'flex';
   clone.style.flexDirection = 'column';
-  clone.style.width = '132mm';
-  clone.style.minHeight = '194mm';
-  clone.style.maxHeight = '194mm';
+  clone.style.width = '100%';
+  clone.style.height = '100%';
+  clone.style.maxHeight = '100%';
   clone.style.boxSizing = 'border-box';
-  clone.style.position = 'fixed';
-  clone.style.left = '0';
-  clone.style.top = '0';
-  clone.style.zIndex = '-99999';
-  clone.style.background = '#ffffff';
-  clone.style.opacity = '1';
-  clone.style.pointerEvents = 'none';
-  document.body.appendChild(clone);
+  clone.style.fontFamily = 'Arial, sans-serif';
+  clone.style.color = '#17345c';
+  clone.style.fontSize = '11pt';
+  clone.style.lineHeight = '1.3';
+
+  overlay.appendChild(clone);
+  document.body.appendChild(overlay);
 
   const originInput = document.getElementById('origin').value.trim() || 'Rombongan';
   const safeOrigin = originInput.replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -183,15 +204,16 @@ async function downloadPDF() {
   const filename = `Reservation_Shinara_${safeOrigin}${visitDateInput ? '_' + visitDateInput : ''}.pdf`;
 
   const opt = {
-    margin: [8, 8, 8, 8],
+    margin: 0,
     filename: filename,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: {
       scale: 2,
       useCORS: true,
       logging: false,
+      scrollX: 0,
       scrollY: 0,
-      scrollX: 0
+      backgroundColor: '#ffffff'
     },
     jsPDF: {
       unit: 'mm',
@@ -202,7 +224,7 @@ async function downloadPDF() {
 
   try {
     if (window.html2pdf) {
-      await html2pdf().set(opt).from(clone).save();
+      await html2pdf().set(opt).from(overlay).save();
     } else {
       window.print();
     }
@@ -210,7 +232,7 @@ async function downloadPDF() {
     console.error('Error generating PDF:', err);
     window.print();
   } finally {
-    clone.remove();
+    overlay.remove();
     downloadBtn.disabled = false;
     downloadBtn.innerHTML = originalBtnText;
   }
